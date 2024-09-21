@@ -1,0 +1,245 @@
+AWSTemplateFormatVersion: 2010-09-09 
+
+Description: Creates vpc with public and private subnets
+
+Metadata:
+  AWS::CloudFormation::Interface: 
+    ParameterGroups:
+      - 
+        Label: 
+          default: "VPC CIDR"
+        Parameters: 
+          - 473019369VpcCIDR
+      - 
+        Label: 
+          default: "Subnet CIDR"
+        Parameters:
+          - 473019369PublicSubnetCIDR
+          - 473019369PrivateSubnetCIDR
+          - 473019369PrivateSubnet2CIDR
+      - 
+        Label: 
+          default: "SSH CIDR"
+        Parameters: 
+          - 473019369SSHIP
+
+Parameters:
+  473019369VpcCIDR: 
+    Default: 10.0.0.0/16 
+    Description: Enter subnet public CIDR
+    Type: String
+
+  473019369PublicSubnetCIDR: 
+    Default: 10.0.0.0/24 
+    Description: Enter subnet private CIDR
+    Type: String
+
+  473019369PrivateSubnetCIDR: 
+    Default: 10.0.1.0/24 
+    Description: Enter subnet private CIDR
+    Type: String
+    
+  473019369PrivateSubnet2CIDR: 
+    Default: 10.0.2.0/24 
+    Description: Enter subnet private CIDR
+    Type: String
+
+  473019369SSHIP:
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Please provide a valid IP CIDR range in the format x.x.x.x/x.
+    Default: 0.0.0.0/0
+    Description: The IP address range that can be used to access the web server using SSH.
+    MaxLength: '18'
+    MinLength: '9'
+    Type: String
+
+Resources:
+  473019369VPC: 
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: !Ref 473019369VpcCIDR
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags: 
+        - Key: Name
+          Value: 473019369VPC
+  
+  473019369InternetGateway: 
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: 473019369IGW
+
+  473019369InternetGatewayAttachment: 
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref 473019369InternetGateway
+      VpcId: !Ref 473019369VPC
+
+  473019369PublicSubnet: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref 473019369PublicSubnetCIDR
+      MapPublicIpOnLaunch: true 
+      Tags:
+        - Key: Name
+          Value: 473019369PublicSubnet
+      VpcId: !Ref 473019369VPC
+
+  473019369PublicRouteTable: 
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: 473019369PublicRT
+      VpcId: !Ref 473019369VPC
+
+  473019369PublicRoute: 
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref 473019369InternetGateway
+      RouteTableId: !Ref 473019369PublicRouteTable
+
+  473019369PublicSubnetRouteTableAssociation: 
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref 473019369PublicRouteTable
+      SubnetId: !Ref 473019369PublicSubnet
+
+  473019369PrivateSubnet: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref 473019369PrivateSubnetCIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: 473019369PrivateSubnet
+      VpcId: !Ref 473019369VPC
+  
+  473019369PrivateSubnet2: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref 473019369PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: 473019369PrivateSubnet2
+      VpcId: !Ref 473019369VPC
+  
+  473019369HTTPSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access on port 80 (HTTP)
+      GroupName: 473019369HTTPSG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: 473019369HTTPSG
+      VpcId: !Ref 473019369VPC
+
+  473019369SSHSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access on port 22 (SSH)
+      GroupName: 473019369SSHSG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: 473019369SSHSG
+      VpcId: !Ref 473019369VPC
+
+  473019369HTTPSSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Allow access on port 443 (HTTPS)
+        GroupName: 473019369HTTPSSG
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: 0.0.0.0/0
+        Tags:
+          - Key: Name
+            Value: 473019369HTTPSSG
+        VpcId: !Ref 473019369VPC
+
+  473019369DataBaseSG: 
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open database for access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0 
+      Tags:
+        - Key: Name
+          Value: DataBaseSG
+      VpcId: !Ref 473019369VPC
+
+Outputs:
+  473019369VPC: 
+    Description: VPC ID
+    Export:
+      Name: !Sub ${AWS::StackName}-473019369VPC
+    Value: !Ref 473019369VPC
+
+  473019369PublicSubnet: 
+    Description: Public Subnet ID    
+    Value: !Ref 473019369PublicSubnet
+    Export:
+      Name: 
+        'Fn::Sub': '${AWS::StackName}-473019369PublicSubnet'
+
+  473019369PrivateSubnet:
+    Description: Private Subnet ID
+    Export:
+      Name: !Sub ${AWS::StackName}-473019369PrivateSubnet
+    Value: !Ref 473019369PrivateSubnet
+
+  473019369PrivateSubnet2:
+    Description: Private Subnet2 ID
+    Export:
+      Name: !Sub ${AWS::StackName}-473019369PrivateSubnet2
+    Value: !Ref 473019369PrivateSubnet2
+
+  473019369HTTPSG: 
+    Description: Webserver Security Group ID for HTTP 
+    Value: !Ref 473019369HTTPSG
+    Export:
+      Name: 
+        'Fn::Sub': ${AWS::StackName}-473019369HTTPSG
+
+  473019369SSHSG:
+    Description: Webserver Security Group ID for SSH 
+    Value: !Ref 473019369SSHSG
+    Export:
+      Name: 
+        'Fn::Sub': ${AWS::StackName}-473019369SSHSG
+
+  473019369HTTPSSG: 
+    Description: Webserver Security Group ID for HTTPS 
+    Value: !Ref 473019369HTTPSSG
+    Export:
+      Name: 
+        'Fn::Sub': ${AWS::StackName}-473019369HTTPSSG
+
+  473019369DataBaseSG:
+    Description: Database Security Group ID
+    Export:
+      Name: !Sub ${AWS::StackName}-473019369DataBaseSG
+    Value: !Ref 473019369DataBaseSG

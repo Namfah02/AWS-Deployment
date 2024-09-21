@@ -1,0 +1,139 @@
+---
+Metadata:
+  AWS::Cloudformation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: VPC stack name
+        Parameters:
+          - VPCStackName
+      -
+        Label:
+          default: Database parameters
+        Parameters:
+          - DatabaseInstanceIdentifier
+          - DatabaseName
+          - DatabaseUser
+          - DatabasePassword
+          - DatabaseBackupRetentionPeriod
+          - DatabaseAllocatedStorage
+          - DatabaseInstanceClass
+          - MultiAZDatabase
+        
+Parameters:
+  VPCStackName:
+    Description: The name of the stack containing the VPC resources
+    Type: String
+  
+  DatabaseInstanceIdentifier:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Begin with a letter, and only contain letters and numbers
+    Default: database473019369
+    Description: DB instance identifier name
+    MaxLength: 60
+    MinLength: 1
+    Type: String
+
+  DatabaseName:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Begin with a letter, and only contain letters and numbers
+    Default: db473019369
+    Description: MySql database name
+    MaxLength: 64
+    MinLength: 1
+    Type: String
+  
+  DatabaseUser:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Begin with a letter, and only contain letters and numbers
+    Default: admin
+    Description: Database username
+    MaxLength: 16
+    MinLength: 1
+    NoEcho: true
+    Type: String
+
+  DatabasePassword:
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: Only contain letters and numbers
+    Default: admin123456
+    Description: Database password
+    MaxLength: 41
+    MinLength: 8
+    NoEcho: true
+    Type: String
+
+  DatabaseBackupRetentionPeriod:
+    ConstraintDescription: Database backup retention period
+    Default: 0
+    Description: The number of days for which automatic DB anapshots are retained
+    MaxValue: 35
+    MinValue: 0
+    Type: Number
+
+  DatabaseAllocatedStorage:
+    ConstraintDescription: Size must between 5 and 1024Gb
+    Default: 200
+    Description: Database size(Gb)
+    MaxValue: 65536
+    MinValue: 5
+    Type: Number
+
+  DatabaseInstanceClass:
+    AllowedValues:
+      - db.t1.micro
+      - db.t2.micro
+      - db.t3.micro
+      - db.m1.small
+      - db.m1.medium
+      - db.m1.large
+    ConstraintDescription: Must select a valid database instance type
+    Default: db.t3.micro
+    Description: Database instance type
+    Type: String
+
+  MultiAZDatabase:
+    AllowedValues:
+      - true
+      - false
+    ConstraintDescription: True or False
+    Default: false
+    Description: Multi-AZ MySql Amazon RDS database
+    Type: String
+
+Resources:
+  DBSubnetGroup: 
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties: 
+      DBSubnetGroupDescription: Database subnet groups for RDS database
+      SubnetIds: 
+        - Fn::ImportValue: !Sub "${VPCStackName}-473019369PrivateSubnet"
+        - Fn::ImportValue: !Sub "${VPCStackName}-473019369PrivateSubnet2"
+      Tags: 
+        - Key: Name
+          Value: DBSubnetGroup
+    
+  RDSDBInstance:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      BackupRetentionPeriod: !Ref DatabaseBackupRetentionPeriod
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      DBInstanceIdentifier: !Ref DatabaseInstanceIdentifier
+      DBName: !Ref DatabaseName
+      DBSubnetGroupName:  !Ref DBSubnetGroup
+      Engine: mysql
+      EngineVersion: 8.0.35
+      MasterUsername: !Ref DatabaseUser
+      MasterUserPassword: !Ref DatabasePassword
+      MultiAZ: !Ref MultiAZDatabase
+      VPCSecurityGroups: 
+        - Fn::ImportValue: !Sub "${VPCStackName}-473019369DataBaseSG"
+
+Outputs:
+  RDSInstanceEndpoint: 
+    Description: Endpoint of the RDS instance
+    Value: !GetAtt RDSDBInstance.Endpoint.Address
+    Export:
+      Name: !Sub "${AWS::StackName}-RDSInstanceEndpoint"

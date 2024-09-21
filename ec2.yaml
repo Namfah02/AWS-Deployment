@@ -1,0 +1,49 @@
+---
+Parameters:
+  VpcStackName:
+    Description: The name of the stack containing the VPC resources
+    Type: String
+
+Resources:
+  473019369WebpageEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: napassawan
+      ImageId: ami-051f8a213df8bc089
+      SubnetId: 
+        Fn::ImportValue: !Sub "${VpcStackName}-473019369PublicSubnet"
+      SecurityGroupIds: 
+        - Fn::ImportValue: !Sub "${VpcStackName}-473019369HTTPSG"
+        - Fn::ImportValue: !Sub "${VpcStackName}-473019369SSHSG"
+        - Fn::ImportValue: !Sub "${VpcStackName}-473019369HTTPSSG"
+      Tags:
+        - Key: Name
+          Value: ec2473019369
+
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash -xe
+            sudo su
+            sudo dnf update -y
+            sudo dnf install -y httpd wget php-fpm php-mysqli php-json php php-devel
+            sudo dnf install -y mariadb105-server
+            sudo systemctl enable httpd
+            sudo systemctl start httpd
+            cd /var/www
+            chmod 777 html 
+            cd /var/www/html
+            wget https://github.com/Namfah02/gorgeous_cupcakes/archive/refs/heads/main.zip
+            unzip main.zip
+            rm main.zip
+
+Outputs:
+  473019369EC2: 
+    Description: EC2 ID
+    Export:
+      Name: !Sub ${AWS::StackName}-473019369EC2
+    Value: !Ref 473019369WebpageEC2
+
+
+
